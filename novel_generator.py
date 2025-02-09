@@ -35,7 +35,8 @@ from prompt_definitions import (
     update_character_state_prompt,
     first_chapter_draft_prompt,
     next_chapter_draft_prompt,
-    summarize_recent_chapters_prompt
+    summarize_recent_chapters_prompt,
+    create_character_state_prompt
 )
 
 # 章节目录解析
@@ -146,20 +147,20 @@ def init_vector_store(
 
     try:
         class LCEmbeddingWrapper(LCEmbeddings):
-            def embed_documents(self, doc_texts: List[str]) -> List[List[float]]:
+            def embed_documents(self, texts: List[str]) -> List[List[float]]:
                 return call_with_retry(
                     func=embedding_adapter.embed_documents,
                     max_retries=3,
                     fallback_return=[],
-                    doc_texts=doc_texts
+                    texts=texts
                 )
 
-            def embed_query(self, query_text: str) -> List[float]:
+            def embed_query(self, query: str) -> List[float]:
                 res = call_with_retry(
                     func=embedding_adapter.embed_query,
                     max_retries=3,
                     fallback_return=[],
-                    query_text=query_text
+                    query=query
                 )
                 return res
 
@@ -195,20 +196,20 @@ def load_vector_store(
 
     try:
         class LCEmbeddingWrapper(LCEmbeddings):
-            def embed_documents(self, doc_texts: List[str]) -> List[List[float]]:
+            def embed_documents(self, texts: List[str]) -> List[List[float]]:
                 return call_with_retry(
                     func=embedding_adapter.embed_documents,
                     max_retries=3,
                     fallback_return=[],
-                    doc_texts=doc_texts
+                    texts=texts
                 )
 
-            def embed_query(self, query_text: str) -> List[float]:
+            def embed_query(self, query: str) -> List[float]:
                 res = call_with_retry(
                     func=embedding_adapter.embed_query,
                     max_retries=3,
                     fallback_return=[],
-                    query_text=query_text
+                    query=query
                 )
                 return res
 
@@ -247,8 +248,9 @@ def split_text_for_vectorstore(chapter_text: str,
     """
     if not chapter_text.strip():
         return []
-
+    
     nltk.download('punkt', quiet=True)
+    nltk.download('punkt_tab', quiet=True)
     sentences = nltk.sent_tokenize(chapter_text)
     if not sentences:
         return []
@@ -331,6 +333,7 @@ def get_relevant_context_from_vector_store(
     """
     从向量库中检索与 query 最相关的 k 条文本，拼接后返回。
     如果向量库加载/检索失败，则返回空字符串。
+    最终只返回最多2000字符的检索片段。
     """
     store = load_vector_store(embedding_adapter, filepath)
     if not store:
@@ -343,6 +346,9 @@ def get_relevant_context_from_vector_store(
             logging.info(f"No relevant documents found for query '{query}'. Returning empty context.")
             return ""
         combined = "\n".join([d.page_content for d in docs])
+        # 限制长度最多2000字符
+        if len(combined) > 2000:
+            combined = combined[:2000]
         return combined
     except Exception as e:
         logging.warning(f"Similarity search failed: {e}")
@@ -470,6 +476,10 @@ def Novel_architecture_generate(
     若在中间任何一步报错且重试多次失败，则将已经生成的内容写入 partial_architecture.json 并退出；
     下次调用时可从该步骤继续。
     最终输出 Novel_architecture.txt
+
+    新增：
+    - 在完成角色动力学设定后，依据该角色体系，使用 create_character_state_prompt 生成初始角色状态表，
+      并存储到 character_state.txt，后续维护更新。
     """
     os.makedirs(filepath, exist_ok=True)
 
@@ -521,6 +531,28 @@ def Novel_architecture_generate(
         save_partial_architecture_data(filepath, partial_data)
     else:
         logging.info("Step2 already done. Skipping...")
+
+    # 在完成角色动力学设定后，生成初始角色状态表
+    if "character_dynamics_result" in partial_data and "character_state_result" not in partial_data:
+        logging.info("Generating initial character state from character dynamics ...")
+        prompt_char_state_init = create_character_state_prompt.format(
+            character_dynamics=partial_data["character_dynamics_result"].strip()
+        )
+        character_state_init = invoke_with_cleaning(llm_adapter, prompt_char_state_init)
+        if not character_state_init.strip():
+            logging.warning("create_character_state_prompt generation failed.")
+            # 写入目前已有结果，然后退出
+            save_partial_architecture_data(filepath, partial_data)
+            return
+
+        partial_data["character_state_result"] = character_state_init
+        # 保存到文件
+        character_state_file = os.path.join(filepath, "character_state.txt")
+        clear_file_content(character_state_file)
+        save_string_to_txt(character_state_init, character_state_file)
+
+        save_partial_architecture_data(filepath, partial_data)
+        logging.info("Initial character state created and saved.")
 
     # Step3: 世界观
     if "world_building_result" not in partial_data:
@@ -597,14 +629,30 @@ def compute_chunk_size(number_of_chapters: int, max_tokens: int) -> int:
     并确保 chunk_size 不会小于1或大于实际章节数。
     """
     tokens_per_chapter = 100.0
-    ratio = max_tokens / tokens_per_chapter  # 例如：8192 / 100 = 81.92
-    ratio_rounded_to_10 = int(ratio // 10) * 10  # => 80
-    chunk_size = ratio_rounded_to_10 - 10       # => 70
+    ratio = max_tokens / tokens_per_chapter
+    ratio_rounded_to_10 = int(ratio // 10) * 10
+    chunk_size = ratio_rounded_to_10 - 10
     if chunk_size < 1:
         chunk_size = 1
     if chunk_size > number_of_chapters:
         chunk_size = number_of_chapters
     return chunk_size
+
+
+def limit_chapter_blueprint(blueprint_text: str, limit_chapters: int = 100) -> str:
+    """
+    从已有章节目录中只取最近的 limit_chapters 章，以避免 prompt 超长。
+    """
+    pattern = r"(第\s*\d+\s*章.*?)(?=第\s*\d+\s*章|$)"
+    chapters = re.findall(pattern, blueprint_text, flags=re.DOTALL)
+    if not chapters:
+        return blueprint_text
+
+    if len(chapters) <= limit_chapters:
+        return blueprint_text
+
+    selected = chapters[-limit_chapters:]
+    return "\n\n".join(selected).strip()
 
 
 # ============ 2) 生成章节蓝图（新增分块逻辑 + 断点续跑） ============
@@ -623,6 +671,7 @@ def Chapter_blueprint_generate(
     """
     若 Novel_directory.txt 已存在且内容非空，则表示可能是之前的部分生成结果；
       解析其中已有的章节数，从下一个章节继续分块生成；
+      对于已有章节目录，传入时仅保留最近100章目录，避免prompt过长。
     否则：
       - 若章节数 <= chunk_size，直接一次性生成
       - 若章节数 > chunk_size，进行分块生成
@@ -676,10 +725,11 @@ def Chapter_blueprint_generate(
         current_start = max_existing_chap + 1
         while current_start <= number_of_chapters:
             current_end = min(current_start + chunk_size - 1, number_of_chapters)
+            limited_blueprint = limit_chapter_blueprint(final_blueprint, 100)
 
             chunk_prompt = chunked_chapter_blueprint_prompt.format(
                 novel_architecture=architecture_text,
-                chapter_list=final_blueprint,      # 已有的章节列表文本
+                chapter_list=limited_blueprint,  # 只保留最近100章
                 number_of_chapters=number_of_chapters,
                 n=current_start,
                 m=current_end
@@ -696,7 +746,7 @@ def Chapter_blueprint_generate(
 
             final_blueprint += "\n\n" + chunk_result.strip()
 
-            # 实时写入，以免中途崩溃造成丢失
+            # 实时写入
             clear_file_content(filename_dir)
             save_string_to_txt(final_blueprint.strip(), filename_dir)
 
@@ -728,10 +778,11 @@ def Chapter_blueprint_generate(
     current_start = 1
     while current_start <= number_of_chapters:
         current_end = min(current_start + chunk_size - 1, number_of_chapters)
+        limited_blueprint = limit_chapter_blueprint(final_blueprint, 100)
 
         chunk_prompt = chunked_chapter_blueprint_prompt.format(
             novel_architecture=architecture_text,
-            chapter_list=final_blueprint,  # 已有的章节列表文本
+            chapter_list=limited_blueprint,  # 只保留最近100章
             number_of_chapters=number_of_chapters,
             n=current_start,
             m=current_end
@@ -971,6 +1022,7 @@ def finalize_chapter(
         timeout=timeout
     )
 
+    # 更新全局摘要
     prompt_summary = summary_prompt.format(
         chapter_text=chapter_text,
         global_summary=old_global_summary
@@ -979,6 +1031,7 @@ def finalize_chapter(
     if not new_global_summary.strip():
         new_global_summary = old_global_summary
 
+    # 更新角色状态
     prompt_char_state = update_character_state_prompt.format(
         chapter_text=chapter_text,
         old_state=old_character_state
@@ -1042,6 +1095,7 @@ def advanced_split_content(content: str,
                            similarity_threshold: float = 0.7,
                            max_length: int = 500) -> List[str]:
     nltk.download('punkt', quiet=True)
+    nltk.download('punkt_tab', quiet=True)
     sentences = nltk.sent_tokenize(content)
     if not sentences:
         return []
