@@ -507,6 +507,7 @@ def Novel_architecture_generate(
         logging.info("Step1 already done. Skipping...")
 
     # Step2: 角色动力学
+    # 或许可以添加不同的角色构建理论
     if "character_dynamics_result" not in partial_data:
         logging.info("Step2: Generating character_dynamics_prompt ...")
         prompt_character = character_dynamics_prompt.format(core_seed=partial_data["core_seed_result"].strip())
@@ -536,6 +537,7 @@ def Novel_architecture_generate(
         logging.info("Step3 already done. Skipping...")
 
     # Step4: 三幕式情节
+    # 或许可以进一步拓展，使用不同的写法构造剧情
     if "plot_arch_result" not in partial_data:
         logging.info("Step4: Generating plot_architecture_prompt ...")
         prompt_plot = plot_architecture_prompt.format(
