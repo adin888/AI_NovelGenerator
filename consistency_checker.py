@@ -1,6 +1,6 @@
 # consistency_checker.py
 # -*- coding: utf-8 -*-
-from langchain_openai import ChatOpenAI
+from llm_adapters import create_llm_adapter
 
 # ============== 增加对“剧情要点/未解决冲突”进行检查的可选引导 ==============
 CONSISTENCY_PROMPT = """\
@@ -32,7 +32,10 @@ def check_consistency(
     base_url: str,
     model_name: str,
     temperature: float = 0.3,
-    plot_arcs: str = ""   # 新增参数，默认空字符串
+    plot_arcs: str = "",
+    interface_format: str = "OpenAI",
+    max_tokens: int = 2048,
+    timeout: int = 600
 ) -> str:
     """
     调用模型做简单的一致性检查。可扩展更多提示或校验规则。
@@ -45,20 +48,25 @@ def check_consistency(
         plot_arcs=plot_arcs,
         chapter_text=chapter_text
     )
-    model = ChatOpenAI(
-        model=model_name,
-        api_key=api_key,
+
+    llm_adapter = create_llm_adapter(
+        interface_format=interface_format,
         base_url=base_url,
-        temperature=temperature
+        model_name=model_name,
+        api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        timeout=timeout
     )
+
     # 调试日志
     print("\n[ConsistencyChecker] Prompt >>>", prompt)
 
-    response = model.invoke(prompt)
+    response = llm_adapter.invoke(prompt)
     if not response:
         return "审校Agent无回复"
-
+    
     # 调试日志
-    print("[ConsistencyChecker] Response <<<", response.content.strip())
+    print("[ConsistencyChecker] Response <<<", response)
 
-    return response.content.strip()
+    return response

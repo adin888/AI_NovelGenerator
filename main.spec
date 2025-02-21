@@ -7,6 +7,8 @@ hiddenimports = ['typing_extensions',
                  'langchain-openai',
                  'langgraph', 
                  'openai', 
+                 'google-genai',
+                 'google',
                  'nltk',
                  'sentence_transformers',
                  'scikit-learn',
@@ -45,7 +47,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AI_NovelGenerator_V1.4.1',
+    name='AI_NovelGenerator_V1.4.2',
     debug=True,
     bootloader_ignore_signals=False,
     strip=False,
@@ -66,5 +68,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='AI_NovelGenerator_V1.4.1'
+    name='AI_NovelGenerator_V1.4.2'
 )

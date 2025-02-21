@@ -3,8 +3,8 @@
 
 tooltips = {
     "api_key": "在这里填写你的API Key。如果使用OpenAI官方接口，请在 https://platform.openai.com/account/api-keys 获取。",
-    "base_url": "模型的接口地址。若使用OpenAI官方：https://api.openai.com/v1。若使用Ollama本地部署，则类似 http://localhost:11434/v1。",
-    "interface_format": "指定LLM接口兼容格式，可选DeepSeek、OpenAI、Ollama、ML Studio等。\n\n注意："+
+    "base_url": "模型的接口地址。若使用OpenAI官方：https://api.openai.com/v1。若使用Ollama本地部署，则类似 http://localhost:11434/v1。调用Gemini模型则无需填写。",
+    "interface_format": "指定LLM接口兼容格式，可选DeepSeek、OpenAI、Ollama、ML Studio、Gemini等。\n\n注意："+
                         "OpenAI 兼容是指的可以通过该标准请求的任何接口，不是只允许使用api.openai.com接口\n"+
                         "例如Ollama接口格式也兼容OpenAI，可以无需修改直接使用\n"+
                         "ML Studio接口格式与OpenAI接口格式也一致。",
