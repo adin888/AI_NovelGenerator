@@ -51,3 +51,16 @@ def save_data_to_json(data: dict, file_path: str) -> bool:
     except Exception as e:
         print(f"[save_data_to_json] 保存数据到JSON文件时出错: {e}")
         return False
+
+def extract_section(content, start_marker, end_marker):
+    start_index = content.find(start_marker)
+    if start_index == -1:
+        return None
+    start_index += len(start_marker)
+    if end_marker:
+        end_index = content.find(end_marker, start_index)
+        if end_index == -1:
+            return None
+        return content[start_index:end_index].strip()
+    else:
+        return content[start_index:].strip()

@@ -46,37 +46,51 @@ def build_left_layout(self):
     self.step_buttons_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=5)
     self.step_buttons_frame.columnconfigure((0, 1, 2, 3), weight=1)
 
+    local_column = 0
+    self.btn_generate_blueprint = ctk.CTkButton(
+        self.step_buttons_frame,
+        text="Step1. 生成系列",
+        command=self.generate_series_blueprint_ui,
+        font=("Microsoft YaHei", 12)
+    )
+    self.btn_generate_blueprint.grid(row=0, column=local_column, padx=5, pady=2, sticky="ew")
+
+
+    local_column += 1
     self.btn_generate_architecture = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step1. 生成架构",
+        text="Step2. 生成故事",
         command=self.generate_novel_architecture_ui,
         font=("Microsoft YaHei", 12)
     )
-    self.btn_generate_architecture.grid(row=0, column=0, padx=5, pady=2, sticky="ew")
+    self.btn_generate_architecture.grid(row=0, column=local_column, padx=5, pady=2, sticky="ew")
 
+    local_column += 1
     self.btn_generate_directory = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step2. 生成目录",
+        text="Step3. 生成目录",
         command=self.generate_chapter_blueprint_ui,
         font=("Microsoft YaHei", 12)
     )
-    self.btn_generate_directory.grid(row=0, column=1, padx=5, pady=2, sticky="ew")
+    self.btn_generate_directory.grid(row=0, column=local_column, padx=5, pady=2, sticky="ew")
 
+    local_column += 1
     self.btn_generate_chapter = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step3. 生成草稿",
+        text="Step4. 生成草稿",
         command=self.generate_chapter_draft_ui,
         font=("Microsoft YaHei", 12)
     )
-    self.btn_generate_chapter.grid(row=0, column=2, padx=5, pady=2, sticky="ew")
+    self.btn_generate_chapter.grid(row=0, column=local_column, padx=5, pady=2, sticky="ew")
 
+    local_column += 1
     self.btn_finalize_chapter = ctk.CTkButton(
         self.step_buttons_frame,
-        text="Step4. 定稿章节",
+        text="Step5. 定稿章节",
         command=self.finalize_chapter_ui,
         font=("Microsoft YaHei", 12)
     )
-    self.btn_finalize_chapter.grid(row=0, column=3, padx=5, pady=2, sticky="ew")
+    self.btn_finalize_chapter.grid(row=0, column=local_column, padx=5, pady=2, sticky="ew")
 
     # 日志文本框
     log_label = ctk.CTkLabel(self.left_frame, text="输出日志 (只读)", font=("Microsoft YaHei", 12))

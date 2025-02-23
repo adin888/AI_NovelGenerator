@@ -28,6 +28,10 @@ def load_novel_architecture(self):
         messagebox.showwarning("警告", "请先设置保存文件路径")
         return
     filename = os.path.join(filepath, "Novel_architecture.txt")
+    if not os.path.exists(filename):
+        messagebox.showwarning("警告", f"未找到文件: {filename}")
+        self.log(f"未找到文件: {filename}")
+        return
     content = read_file(filename)
     self.setting_text.delete("0.0", "end")
     self.setting_text.insert("0.0", content)

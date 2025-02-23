@@ -16,7 +16,7 @@ from prompt_definitions import (
     plot_architecture_prompt,
     create_character_state_prompt
 )
-from utils import clear_file_content, save_string_to_txt
+from utils import read_file, clear_file_content, save_string_to_txt
 
 def load_partial_architecture_data(filepath: str) -> dict:
     """
@@ -50,8 +50,7 @@ def Novel_architecture_generate(
     api_key: str,
     base_url: str,
     llm_model: str,
-    topic: str,
-    genre: str,
+    story_index: int,
     number_of_chapters: int,
     word_number: int,
     filepath: str,
@@ -73,7 +72,15 @@ def Novel_architecture_generate(
     - 在完成角色动力学设定后，依据该角色体系，使用 create_character_state_prompt 生成初始角色状态表，
       并存储到 character_state.txt，后续维护更新。
     """
-    os.makedirs(filepath, exist_ok=True)
+    series_blueprint_file = os.path.join(filepath, "Novel_series.txt")
+    if not os.path.exists(series_blueprint_file):
+        logging.warning("Novel_series.txt not found. Please generate series blueprint first.")
+        return
+    series_blueprint_text = read_file(series_blueprint_file).strip()
+    if not series_blueprint_text:
+        logging.warning("Novel_series.txt is empty.")
+        return
+    
     partial_data = load_partial_architecture_data(filepath)
     llm_adapter = create_llm_adapter(
         interface_format=interface_format,
@@ -88,10 +95,10 @@ def Novel_architecture_generate(
     if "core_seed_result" not in partial_data:
         logging.info("Step1: Generating core_seed_prompt (核心种子) ...")
         prompt_core = core_seed_prompt.format(
-            topic=topic,
-            genre=genre,
+            series_blueprint=series_blueprint_text,
             number_of_chapters=number_of_chapters,
-            word_number=word_number
+            word_number=word_number,
+            story_index=story_index
         )
         core_seed_result = invoke_with_cleaning(llm_adapter, prompt_core)
         if not core_seed_result.strip():

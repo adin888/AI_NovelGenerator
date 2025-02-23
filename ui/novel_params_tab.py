@@ -10,23 +10,31 @@ def build_novel_params_area(self, start_row=1):
     self.params_frame.columnconfigure(1, weight=1)
 
     # 1) 主题(Topic)
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="主题(Topic):", tooltip_key="topic", row=0, column=0, font=("Microsoft YaHei", 12), sticky="ne")
+    local_start_row = 0
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="主题(Topic):", tooltip_key="topic", row=local_start_row, column=0, font=("Microsoft YaHei", 12), sticky="ne")
     self.topic_text = ctk.CTkTextbox(self.params_frame, height=80, wrap="word", font=("Microsoft YaHei", 12))
     TextWidgetContextMenu(self.topic_text)
-    self.topic_text.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+    self.topic_text.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="nsew")
     if hasattr(self, 'topic_default') and self.topic_default:
         self.topic_text.insert("0.0", self.topic_default)
 
     # 2) 类型(Genre)
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="类型(Genre):", tooltip_key="genre", row=1, column=0, font=("Microsoft YaHei", 12))
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="类型(Genre):", tooltip_key="genre", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     genre_entry = ctk.CTkEntry(self.params_frame, textvariable=self.genre_var, font=("Microsoft YaHei", 12))
-    genre_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+    genre_entry.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="ew")
+
+    # 2.1) 故事数量
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="故事数量:", tooltip_key="number_of_stories", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
+    num_stories_entry = ctk.CTkEntry(self.params_frame, textvariable=self.num_stories_var, font=("Microsoft YaHei", 12))
+    num_stories_entry.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="ew")
 
     # 3) 章节数 & 每章字数
-    row_for_chapter_and_word = 2
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="章节数 & 每章字数:", tooltip_key="num_chapters", row=row_for_chapter_and_word, column=0, font=("Microsoft YaHei", 12))
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="章节数 & 每章字数:", tooltip_key="num_chapters", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     chapter_word_frame = ctk.CTkFrame(self.params_frame)
-    chapter_word_frame.grid(row=row_for_chapter_and_word, column=1, padx=5, pady=5, sticky="ew")
+    chapter_word_frame.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="ew")
     chapter_word_frame.columnconfigure((0, 1, 2, 3), weight=0)
     num_chapters_label = ctk.CTkLabel(chapter_word_frame, text="章节数:", font=("Microsoft YaHei", 12))
     num_chapters_label.grid(row=0, column=0, padx=5, pady=5, sticky="e")
@@ -38,10 +46,10 @@ def build_novel_params_area(self, start_row=1):
     word_number_entry.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
     # 4) 保存路径
-    row_fp = 3
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="保存路径:", tooltip_key="filepath", row=row_fp, column=0, font=("Microsoft YaHei", 12))
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="保存路径:", tooltip_key="filepath", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     self.filepath_frame = ctk.CTkFrame(self.params_frame)
-    self.filepath_frame.grid(row=row_fp, column=1, padx=5, pady=5, sticky="nsew")
+    self.filepath_frame.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="nsew")
     self.filepath_frame.columnconfigure(0, weight=1)
     filepath_entry = ctk.CTkEntry(self.filepath_frame, textvariable=self.filepath_var, font=("Microsoft YaHei", 12))
     filepath_entry.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
@@ -49,37 +57,37 @@ def build_novel_params_area(self, start_row=1):
     browse_btn.grid(row=0, column=1, padx=5, pady=5, sticky="e")
 
     # 5) 章节号
-    row_chap_num = 4
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="章节号:", tooltip_key="chapter_num", row=row_chap_num, column=0, font=("Microsoft YaHei", 12))
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="章节号:", tooltip_key="chapter_num", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     chapter_num_entry = ctk.CTkEntry(self.params_frame, textvariable=self.chapter_num_var, width=80, font=("Microsoft YaHei", 12))
-    chapter_num_entry.grid(row=row_chap_num, column=1, padx=5, pady=5, sticky="w")
+    chapter_num_entry.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="w")
 
     # 6) 本章指导
-    row_user_guide = 5
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="本章指导:", tooltip_key="user_guidance", row=row_user_guide, column=0, font=("Microsoft YaHei", 12), sticky="ne")
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="本章指导:", tooltip_key="user_guidance", row=local_start_row, column=0, font=("Microsoft YaHei", 12), sticky="ne")
     self.user_guide_text = ctk.CTkTextbox(self.params_frame, height=80, wrap="word", font=("Microsoft YaHei", 12))
     TextWidgetContextMenu(self.user_guide_text)
-    self.user_guide_text.grid(row=row_user_guide, column=1, padx=5, pady=5, sticky="nsew")
+    self.user_guide_text.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="nsew")
     if hasattr(self, 'user_guidance_default') and self.user_guidance_default:
         self.user_guide_text.insert("0.0", self.user_guidance_default)
 
     # 7) 可选元素：核心人物/关键道具/空间坐标/时间压力
-    row_idx = 6
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="核心人物:", tooltip_key="characters_involved", row=row_idx, column=0, font=("Microsoft YaHei", 12))
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="核心人物:", tooltip_key="characters_involved", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     char_inv_entry = ctk.CTkEntry(self.params_frame, textvariable=self.characters_involved_var, font=("Microsoft YaHei", 12))
-    char_inv_entry.grid(row=row_idx, column=1, padx=5, pady=5, sticky="ew")
-    row_idx += 1
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="关键道具:", tooltip_key="key_items", row=row_idx, column=0, font=("Microsoft YaHei", 12))
+    char_inv_entry.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="ew")
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="关键道具:", tooltip_key="key_items", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     key_items_entry = ctk.CTkEntry(self.params_frame, textvariable=self.key_items_var, font=("Microsoft YaHei", 12))
-    key_items_entry.grid(row=row_idx, column=1, padx=5, pady=5, sticky="ew")
-    row_idx += 1
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="空间坐标:", tooltip_key="scene_location", row=row_idx, column=0, font=("Microsoft YaHei", 12))
+    key_items_entry.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="ew")
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="空间坐标:", tooltip_key="scene_location", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     scene_loc_entry = ctk.CTkEntry(self.params_frame, textvariable=self.scene_location_var, font=("Microsoft YaHei", 12))
-    scene_loc_entry.grid(row=row_idx, column=1, padx=5, pady=5, sticky="ew")
-    row_idx += 1
-    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="时间压力:", tooltip_key="time_constraint", row=row_idx, column=0, font=("Microsoft YaHei", 12))
+    scene_loc_entry.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="ew")
+    local_start_row += 1
+    create_label_with_help_for_novel_params(self, parent=self.params_frame, label_text="时间压力:", tooltip_key="time_constraint", row=local_start_row, column=0, font=("Microsoft YaHei", 12))
     time_const_entry = ctk.CTkEntry(self.params_frame, textvariable=self.time_constraint_var, font=("Microsoft YaHei", 12))
-    time_const_entry.grid(row=row_idx, column=1, padx=5, pady=5, sticky="ew")
+    time_const_entry.grid(row=local_start_row, column=1, padx=5, pady=5, sticky="ew")
 
 def build_optional_buttons_area(self, start_row=2):
     self.optional_btn_frame = ctk.CTkFrame(self.right_frame)
