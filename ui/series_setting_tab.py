@@ -4,7 +4,13 @@ import os
 import json
 import customtkinter as ctk
 from tkinter import messagebox
-from utils import read_file, save_string_to_txt, clear_file_content, extract_section
+from utils import (
+    read_file, 
+    save_string_to_txt, 
+    clear_file_content, 
+    extract_section,
+    save_data_to_json
+)
 from ui.context_menu import TextWidgetContextMenu
 
 def build_series_setting_tab(self):
@@ -53,6 +59,7 @@ def save_series_blueprint(self):
     json_filename = os.path.join(filepath, "Novel_series.json")
     if not os.path.exists(json_filename):
         messagebox.showwarning("警告", "Novel_series.json 文件不存在。")
+        self.log(f"未找到文件: {json_filename}")
         return
 
     try:
@@ -70,8 +77,7 @@ def save_series_blueprint(self):
         json_data["series_blueprint_result"] = series_blueprint_result
         json_data["series_character_arc_result"] = series_character_arc_result
 
-        with open(json_filename, "w", encoding="utf-8") as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
+        save_data_to_json(json_data, json_filename)
         self.log("已同步更新 Novel_series.json。")
     except Exception as e:
         messagebox.showerror("错误", f"更新 Novel_series.json 时出错: {e}")

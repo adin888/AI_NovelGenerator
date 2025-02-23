@@ -105,6 +105,7 @@ class NovelGeneratorGUI:
             self.topic_default = op.get("topic", "")
             self.genre_var = ctk.StringVar(value=op.get("genre", "玄幻"))
             self.num_stories_var = ctk.StringVar(value=str(op.get("num_stories", 3)))
+            self.story_index_var = ctk.StringVar(value=str(op.get("story_index", 1)))
             self.num_chapters_var = ctk.StringVar(value=str(op.get("num_chapters", 10)))
             self.word_number_var = ctk.StringVar(value=str(op.get("word_number", 3000)))
             self.filepath_var = ctk.StringVar(value=op.get("filepath", ""))
@@ -118,6 +119,7 @@ class NovelGeneratorGUI:
             self.topic_default = ""
             self.genre_var = ctk.StringVar(value="玄幻")
             self.num_stories_var = ctk.StringVar(value="3")
+            self.story_index_var = ctk.StringVar(value="1")
             self.num_chapters_var = ctk.StringVar(value="10")
             self.word_number_var = ctk.StringVar(value="3000")
             self.filepath_var = ctk.StringVar(value="")

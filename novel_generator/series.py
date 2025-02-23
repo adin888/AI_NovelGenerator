@@ -11,36 +11,14 @@ from novel_generator.common import invoke_with_cleaning
 from llm_adapters import create_llm_adapter
 from prompt_definitions import (
     series_blueprint_prompt,
-    series_character_arc_prompt,
+    series_character_arc_prompt
 )
-from utils import clear_file_content, save_string_to_txt
-
-def load_partial_series_data(filepath: str) -> dict:
-    """
-    从 filepath 下的 partial_series.json 读取已有的阶段性数据。
-    如果文件不存在或无法解析，返回空 dict。
-    """
-    partial_file = os.path.join(filepath, "partial_series.json")
-    if not os.path.exists(partial_file):
-        return {}
-    try:
-        with open(partial_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data
-    except Exception as e:
-        logging.warning(f"Failed to load partial_series.json: {e}")
-        return {}
-
-def save_partial_series_data(filepath: str, data: dict):
-    """
-    将阶段性数据写入 partial_series.json。
-    """
-    partial_file = os.path.join(filepath, "partial_series.json")
-    try:
-        with open(partial_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logging.warning(f"Failed to save partial_series.json: {e}")
+from utils import (
+    clear_file_content, 
+    save_string_to_txt,
+    save_data_to_json,
+    load_data_from_json
+    )
 
 def Novel_series_generate(
     interface_format: str,
@@ -70,7 +48,8 @@ def Novel_series_generate(
       并存储到 character_state.txt，后续维护更新。
     """
     os.makedirs(filepath, exist_ok=True)
-    partial_data = load_partial_series_data(filepath)
+    partial_data_path = os.path.join(filepath, "partial_series.json")
+    partial_data = load_data_from_json(partial_data_path)
     llm_adapter = create_llm_adapter(
         interface_format=interface_format,
         base_url=base_url,
@@ -91,10 +70,10 @@ def Novel_series_generate(
         series_blueprint_result = invoke_with_cleaning(llm_adapter, prompt_core)
         if not series_blueprint_result.strip():
             logging.warning("series_blueprint generation failed and returned empty.")
-            save_partial_series_data(filepath, partial_data)
+            save_data_to_json(partial_data, partial_data_path)
             return
         partial_data["series_blueprint_result"] = series_blueprint_result
-        save_partial_series_data(filepath, partial_data)
+        save_data_to_json(partial_data, partial_data_path)
     else:
         logging.info("Step1 already done. Skipping...")
     # Step2: 系列角色设定
@@ -106,10 +85,10 @@ def Novel_series_generate(
         series_character_arc_result = invoke_with_cleaning(llm_adapter, prompt_character)
         if not series_character_arc_result.strip():
             logging.warning("series_character_arc_prompt generation failed.")
-            save_partial_series_data(filepath, partial_data)
+            save_data_to_json(partial_data, partial_data_path)
             return
         partial_data["series_character_arc_result"] = series_character_arc_result
-        save_partial_series_data(filepath, partial_data)
+        save_data_to_json(partial_data, partial_data_path)
     else:
         logging.info("Step2 already done. Skipping...")
 
@@ -130,8 +109,7 @@ def Novel_series_generate(
     save_string_to_txt(final_content, arch_file)
     logging.info("Novel_series.txt has been generated successfully.")
 
-    partial_arch_file = os.path.join(filepath, "partial_series.json")
     final_json_file = os.path.join(filepath, "Novel_series.json")
-    if os.path.exists(partial_arch_file):
-        os.rename(partial_arch_file, final_json_file)
+    if os.path.exists(partial_data_path):
+        os.rename(partial_data_path, final_json_file)
         logging.info("partial_series.json has been renamed to Novel_series.json (all steps completed).")

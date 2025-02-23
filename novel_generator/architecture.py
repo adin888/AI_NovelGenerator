@@ -1,4 +1,4 @@
-#novel_generator/architecture.py
+#novel_generator/architecture.pySeries_blueprint.txt
 # -*- coding: utf-8 -*-
 """
 小说总体架构生成（Novel_architecture_generate 及相关辅助函数）
@@ -16,34 +16,13 @@ from prompt_definitions import (
     plot_architecture_prompt,
     create_character_state_prompt
 )
-from utils import read_file, clear_file_content, save_string_to_txt
-
-def load_partial_architecture_data(filepath: str) -> dict:
-    """
-    从 filepath 下的 partial_architecture.json 读取已有的阶段性数据。
-    如果文件不存在或无法解析，返回空 dict。
-    """
-    partial_file = os.path.join(filepath, "partial_architecture.json")
-    if not os.path.exists(partial_file):
-        return {}
-    try:
-        with open(partial_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data
-    except Exception as e:
-        logging.warning(f"Failed to load partial_architecture.json: {e}")
-        return {}
-
-def save_partial_architecture_data(filepath: str, data: dict):
-    """
-    将阶段性数据写入 partial_architecture.json。
-    """
-    partial_file = os.path.join(filepath, "partial_architecture.json")
-    try:
-        with open(partial_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logging.warning(f"Failed to save partial_architecture.json: {e}")
+from utils import (
+    read_file, 
+    clear_file_content, 
+    save_string_to_txt,
+    load_data_from_json,
+    save_data_to_json
+    )
 
 def Novel_architecture_generate(
     interface_format: str,
@@ -72,16 +51,19 @@ def Novel_architecture_generate(
     - 在完成角色动力学设定后，依据该角色体系，使用 create_character_state_prompt 生成初始角色状态表，
       并存储到 character_state.txt，后续维护更新。
     """
-    series_blueprint_file = os.path.join(filepath, "Novel_series.txt")
+    series_blueprint_file = os.path.join(filepath, "Novel_series.json")
     if not os.path.exists(series_blueprint_file):
         logging.warning("Novel_series.txt not found. Please generate series blueprint first.")
         return
-    series_blueprint_text = read_file(series_blueprint_file).strip()
+    series_settings_data = load_data_from_json(series_blueprint_file)
+    series_blueprint_text = series_settings_data["series_blueprint_result"].strip()
+    series_character_arc_text = series_settings_data["series_character_arc_result"].strip()
     if not series_blueprint_text:
         logging.warning("Novel_series.txt is empty.")
         return
     
-    partial_data = load_partial_architecture_data(filepath)
+    partial_data_path = os.path.join(filepath, "partial_architecture.json")
+    partial_data = load_data_from_json(partial_data_path)
     llm_adapter = create_llm_adapter(
         interface_format=interface_format,
         base_url=base_url,
@@ -103,23 +85,25 @@ def Novel_architecture_generate(
         core_seed_result = invoke_with_cleaning(llm_adapter, prompt_core)
         if not core_seed_result.strip():
             logging.warning("core_seed_prompt generation failed and returned empty.")
-            save_partial_architecture_data(filepath, partial_data)
+            save_data_to_json(partial_data, partial_data_path)
             return
         partial_data["core_seed_result"] = core_seed_result
-        save_partial_architecture_data(filepath, partial_data)
+        save_data_to_json(partial_data, partial_data_path)
     else:
         logging.info("Step1 already done. Skipping...")
     # Step2: 角色动力学
     if "character_dynamics_result" not in partial_data:
         logging.info("Step2: Generating character_dynamics_prompt ...")
-        prompt_character = character_dynamics_prompt.format(core_seed=partial_data["core_seed_result"].strip())
+        prompt_character = character_dynamics_prompt.format(
+            core_seed=partial_data["core_seed_result"].strip(),
+            series_character_arc=series_character_arc_text)
         character_dynamics_result = invoke_with_cleaning(llm_adapter, prompt_character)
         if not character_dynamics_result.strip():
             logging.warning("character_dynamics_prompt generation failed.")
-            save_partial_architecture_data(filepath, partial_data)
+            save_data_to_json(partial_data, partial_data_path)
             return
         partial_data["character_dynamics_result"] = character_dynamics_result
-        save_partial_architecture_data(filepath, partial_data)
+        save_data_to_json(partial_data, partial_data_path)
     else:
         logging.info("Step2 already done. Skipping...")
     # 生成初始角色状态
@@ -131,25 +115,27 @@ def Novel_architecture_generate(
         character_state_init = invoke_with_cleaning(llm_adapter, prompt_char_state_init)
         if not character_state_init.strip():
             logging.warning("create_character_state_prompt generation failed.")
-            save_partial_architecture_data(filepath, partial_data)
+            save_data_to_json(partial_data, partial_data_path)
             return
         partial_data["character_state_result"] = character_state_init
         character_state_file = os.path.join(filepath, "character_state.txt")
         clear_file_content(character_state_file)
         save_string_to_txt(character_state_init, character_state_file)
-        save_partial_architecture_data(filepath, partial_data)
+        save_data_to_json(partial_data, partial_data_path)
         logging.info("Initial character state created and saved.")
     # Step3: 世界观
     if "world_building_result" not in partial_data:
         logging.info("Step3: Generating world_building_prompt ...")
-        prompt_world = world_building_prompt.format(core_seed=partial_data["core_seed_result"].strip())
+        prompt_world = world_building_prompt.format(
+            series_blueprint=series_blueprint_text,
+            core_seed=partial_data["core_seed_result"].strip())
         world_building_result = invoke_with_cleaning(llm_adapter, prompt_world)
         if not world_building_result.strip():
             logging.warning("world_building_prompt generation failed.")
-            save_partial_architecture_data(filepath, partial_data)
+            save_data_to_json(partial_data, partial_data_path)
             return
         partial_data["world_building_result"] = world_building_result
-        save_partial_architecture_data(filepath, partial_data)
+        save_data_to_json(partial_data, partial_data_path)
     else:
         logging.info("Step3 already done. Skipping...")
     # Step4: 三幕式情节
@@ -163,10 +149,10 @@ def Novel_architecture_generate(
         plot_arch_result = invoke_with_cleaning(llm_adapter, prompt_plot)
         if not plot_arch_result.strip():
             logging.warning("plot_architecture_prompt generation failed.")
-            save_partial_architecture_data(filepath, partial_data)
+            save_data_to_json(partial_data, partial_data_path)
             return
         partial_data["plot_arch_result"] = plot_arch_result
-        save_partial_architecture_data(filepath, partial_data)
+        save_data_to_json(partial_data, partial_data_path)
     else:
         logging.info("Step4 already done. Skipping...")
 
@@ -176,8 +162,6 @@ def Novel_architecture_generate(
     plot_arch_result = partial_data["plot_arch_result"]
 
     final_content = (
-        "#=== 0) 小说设定 ===\n"
-        f"主题：{topic},类型：{genre},篇幅：约{number_of_chapters}章（每章{word_number}字）\n\n"
         "#=== 1) 核心种子 ===\n"
         f"{core_seed_result}\n\n"
         "#=== 2) 角色动力学 ===\n"
@@ -193,7 +177,7 @@ def Novel_architecture_generate(
     save_string_to_txt(final_content, arch_file)
     logging.info("Novel_architecture.txt has been generated successfully.")
 
-    partial_arch_file = os.path.join(filepath, "partial_architecture.json")
-    if os.path.exists(partial_arch_file):
-        os.remove(partial_arch_file)
-        logging.info("partial_architecture.json removed (all steps completed).")
+    final_json_file = os.path.join(filepath, "Novel_architecture.json")
+    if os.path.exists(partial_data_path):
+        os.rename(partial_data_path, final_json_file)
+        logging.info("partial_architecture.json has been renamed to Novel_architecture.json (all steps completed).")

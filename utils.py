@@ -49,9 +49,21 @@ def save_data_to_json(data: dict, file_path: str) -> bool:
             json.dump(data, json_file, ensure_ascii=False, indent=4)
         return True
     except Exception as e:
-        print(f"[save_data_to_json] 保存数据到JSON文件时出错: {e}")
+        print(f"保存数据到JSON文件 {file_path} 时出错: {e}")
         return False
 
+def load_data_from_json(file_path: str) -> dict:
+    """从 JSON 文件中加载数据。"""
+    if not os.path.exists(file_path):
+        return {}
+    try:
+        with open(file_path, 'r', encoding='utf-8') as json_file:
+            data = json.load(json_file)
+        return data
+    except Exception as e:
+        print(f"从JSON文件 {file_path} 加载数据时出错: {e}")
+        return {}
+    
 def extract_section(content, start_marker, end_marker):
     start_index = content.find(start_marker)
     if start_index == -1:
