@@ -9,30 +9,34 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from .role_library import RoleLibrary
 from llm_adapters import create_llm_adapter
+import inspect
+import importlib
 
 from config_manager import load_config, save_config, test_llm_config, test_embedding_config
 from utils import read_file, save_string_to_txt, clear_file_content
 from tooltips import tooltips
 
-from ui.context_menu import TextWidgetContextMenu
-from ui.main_tab import build_main_tab, build_left_layout, build_right_layout
-from ui.config_tab import build_config_tabview, load_config_btn, save_config_btn
-from ui.novel_params_tab import build_novel_params_area, build_optional_buttons_area
-from ui.generation_handlers import (
-    generate_novel_architecture_ui,
-    generate_chapter_blueprint_ui,
-    generate_chapter_draft_ui,
-    finalize_chapter_ui,
-    do_consistency_check,
-    import_knowledge_handler,
-    clear_vectorstore_handler,
-    show_plot_arcs_ui
-)
-from ui.setting_tab import build_setting_tab, load_novel_architecture, save_novel_architecture
-from ui.directory_tab import build_directory_tab, load_chapter_blueprint, save_chapter_blueprint
-from ui.character_tab import build_character_tab, load_character_state, save_character_state
-from ui.summary_tab import build_summary_tab, load_global_summary, save_global_summary
-from ui.chapters_tab import build_chapters_tab, refresh_chapters_list, on_chapter_selected, load_chapter_content, save_current_chapter, prev_chapter, next_chapter
+# from ui.context_menu import TextWidgetContextMenu
+# from ui.main_tab import build_main_tab, build_left_layout, build_right_layout
+# from ui.config_tab import build_config_tabview, load_config_btn, save_config_btn
+# from ui.novel_params_tab import build_novel_params_area, build_optional_buttons_area
+# from ui.generation_handlers import (
+#     generate_series_blueprint_ui,
+#     generate_novel_architecture_ui,
+#     generate_chapter_blueprint_ui,
+#     generate_chapter_draft_ui,
+#     finalize_chapter_ui,
+#     do_consistency_check,
+#     import_knowledge_handler,
+#     clear_vectorstore_handler,
+#     show_plot_arcs_ui
+# )
+# from ui.series_setting_tab import build_series_setting_tab, load_series_blueprint, save_series_blueprint
+# from ui.story_setting_tab import build_setting_tab, load_novel_architecture, save_novel_architecture
+# from ui.directory_tab import build_directory_tab, load_chapter_blueprint, save_chapter_blueprint
+# from ui.character_tab import build_character_tab, load_character_state, save_character_state
+# from ui.summary_tab import build_summary_tab, load_global_summary, save_global_summary
+# from ui.chapters_tab import build_chapters_tab, refresh_chapters_list, on_chapter_selected, load_chapter_content, save_current_chapter, prev_chapter, next_chapter
 
 class NovelGeneratorGUI:
     """
@@ -102,6 +106,8 @@ class NovelGeneratorGUI:
             op = self.loaded_config["other_params"]
             self.topic_default = op.get("topic", "")
             self.genre_var = ctk.StringVar(value=op.get("genre", "玄幻"))
+            self.num_stories_var = ctk.StringVar(value=str(op.get("num_stories", 3)))
+            self.story_index_var = ctk.StringVar(value=str(op.get("story_index", 1)))
             self.num_chapters_var = ctk.StringVar(value=str(op.get("num_chapters", 10)))
             self.word_number_var = ctk.StringVar(value=str(op.get("word_number", 3000)))
             self.filepath_var = ctk.StringVar(value=op.get("filepath", ""))
@@ -114,6 +120,8 @@ class NovelGeneratorGUI:
         else:
             self.topic_default = ""
             self.genre_var = ctk.StringVar(value="玄幻")
+            self.num_stories_var = ctk.StringVar(value="3")
+            self.story_index_var = ctk.StringVar(value="1")
             self.num_chapters_var = ctk.StringVar(value="10")
             self.word_number_var = ctk.StringVar(value="3000")
             self.filepath_var = ctk.StringVar(value="")
@@ -129,15 +137,16 @@ class NovelGeneratorGUI:
         self.tabview.pack(fill="both", expand=True)
 
         # 创建各个标签页
-        build_main_tab(self)
-        build_config_tabview(self)
-        build_novel_params_area(self, start_row=1)
-        build_optional_buttons_area(self, start_row=2)
-        build_setting_tab(self)
-        build_directory_tab(self)
-        build_character_tab(self)
-        build_summary_tab(self)
-        build_chapters_tab(self)
+        self.build_main_tab()
+        self.build_config_tabview()
+        self.build_novel_params_area(start_row=1)
+        self.build_optional_buttons_area(start_row=2)
+        self.build_series_setting_tab()
+        self.build_setting_tab()
+        self.build_directory_tab()
+        self.build_character_tab()
+        self.build_summary_tab()
+        self.build_chapters_tab()
 
     # ----------------- 通用辅助函数 -----------------
     def show_tooltip(self, key: str):
@@ -339,29 +348,102 @@ class NovelGeneratorGUI:
         self._role_lib = RoleLibrary(self.master, save_path, llm_adapter)  # 新增参数
 
     # ----------------- 将导入的各模块函数直接赋给类方法 -----------------
-    generate_novel_architecture_ui = generate_novel_architecture_ui
-    generate_chapter_blueprint_ui = generate_chapter_blueprint_ui
-    generate_chapter_draft_ui = generate_chapter_draft_ui
-    finalize_chapter_ui = finalize_chapter_ui
-    do_consistency_check = do_consistency_check
-    import_knowledge_handler = import_knowledge_handler
-    clear_vectorstore_handler = clear_vectorstore_handler
-    show_plot_arcs_ui = show_plot_arcs_ui
-    load_config_btn = load_config_btn
-    save_config_btn = save_config_btn
-    load_novel_architecture = load_novel_architecture
-    save_novel_architecture = save_novel_architecture
-    load_chapter_blueprint = load_chapter_blueprint
-    save_chapter_blueprint = save_chapter_blueprint
-    load_character_state = load_character_state
-    save_character_state = save_character_state
-    load_global_summary = load_global_summary
-    save_global_summary = save_global_summary
-    refresh_chapters_list = refresh_chapters_list
-    on_chapter_selected = on_chapter_selected
-    save_current_chapter = save_current_chapter
-    prev_chapter = prev_chapter
-    next_chapter = next_chapter
+    # generate_series_blueprint_ui = generate_series_blueprint_ui
+    # generate_novel_architecture_ui = generate_novel_architecture_ui
+    # generate_chapter_blueprint_ui = generate_chapter_blueprint_ui
+    # generate_chapter_draft_ui = generate_chapter_draft_ui
+    # finalize_chapter_ui = finalize_chapter_ui
+    # do_consistency_check = do_consistency_check
+    # import_knowledge_handler = import_knowledge_handler
+    # clear_vectorstore_handler = clear_vectorstore_handler
+    # show_plot_arcs_ui = show_plot_arcs_ui
+    # load_series_blueprint = load_series_blueprint
+    # save_series_blueprint = save_series_blueprint
+    # load_config_btn = load_config_btn
+    # save_config_btn = save_config_btn
+    # load_novel_architecture = load_novel_architecture
+    # save_novel_architecture = save_novel_architecture
+    # load_chapter_blueprint = load_chapter_blueprint
+    # save_chapter_blueprint = save_chapter_blueprint
+    # load_character_state = load_character_state
+    # save_character_state = save_character_state
+    # load_global_summary = load_global_summary
+    # save_global_summary = save_global_summary
+    # refresh_chapters_list = refresh_chapters_list
+    # on_chapter_selected = on_chapter_selected
+    # save_current_chapter = save_current_chapter
+    # prev_chapter = prev_chapter
+    # next_chapter = next_chapter
     test_llm_config = test_llm_config
     test_embedding_config = test_embedding_config
     browse_folder = browse_folder
+
+# Function to bind all methods from a module to a class    
+def bind_methods_from_module(cls, module_name):
+    """
+    Bind all functions from a specified module to the given class.
+
+    Parameters
+    ----------
+    cls : type
+        The class to which the methods will be bound.
+    module_name : str
+        The name of the module from which the methods will be imported.
+    """
+    # Import the specified module
+    module = importlib.import_module(module_name)
+
+    # # Iterate over all functions in the module and bind them to the class
+    for name, func in inspect.getmembers(module, inspect.isfunction):
+        # Bind functions statically to classes, with function names as method names
+        setattr(cls, name, func)
+
+# Function to bind selected methods from a module to a class        
+def bind_selected_methods_from_module(cls, module_name, methods_to_bind):
+    """
+    Bind selected functions from a specified module to the given class.
+    
+    Parameters
+    ----------
+    cls : type
+        The class to which the methods will be bound.
+    module_name : str
+        The name of the module from which the methods will be imported.
+    methods_to_bind : list of str
+        A list of method names to bind to the class.
+    """
+    # Import the specified module
+    module = importlib.import_module(module_name)
+    
+    # Bind only the selected methods to the class
+    for name, func in inspect.getmembers(module, inspect.isfunction):
+        if name in methods_to_bind:
+            setattr(cls, name, func)
+    
+# Function to unbind methods from a class
+def unbind_methods_from_class(cls, methods_to_remove):
+    """
+    Unbind specific methods from the given class.
+    
+    Parameters
+    ----------
+    cls : type
+        The class from which the methods will be unbound.
+    methods_to_remove : list of str
+        A list of method names to remove from the class.
+    """
+    for method_name in methods_to_remove:
+        if hasattr(cls, method_name):
+            delattr(cls, method_name)   
+
+# Bind methods from different modules to the NovelGeneratorGUI class
+bind_methods_from_module(NovelGeneratorGUI, "ui.main_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.config_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.novel_params_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.generation_handlers")
+bind_methods_from_module(NovelGeneratorGUI, "ui.series_setting_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.story_setting_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.directory_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.character_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.summary_tab")
+bind_methods_from_module(NovelGeneratorGUI, "ui.chapters_tab")

@@ -8,6 +8,7 @@ import customtkinter as ctk
 import traceback
 from utils import read_file, save_string_to_txt, clear_file_content
 from novel_generator import (
+    Novel_series_generate,
     Novel_architecture_generate,
     Chapter_blueprint_generate,
     generate_chapter_draft,
@@ -17,6 +18,49 @@ from novel_generator import (
     enrich_chapter_text
 )
 from consistency_checker import check_consistency
+
+def generate_series_blueprint_ui(self):
+    filepath = self.filepath_var.get().strip()
+    if not filepath:
+        messagebox.showwarning("警告", "请先选择保存文件路径")
+        return
+
+    def task():
+        self.disable_button_safe(self.btn_generate_blueprint)
+        try:
+            interface_format = self.interface_format_var.get().strip()
+            api_key = self.api_key_var.get().strip()
+            base_url = self.base_url_var.get().strip()
+            model_name = self.model_name_var.get().strip()
+            temperature = self.temperature_var.get()
+            max_tokens = self.max_tokens_var.get()
+            timeout_val = self.safe_get_int(self.timeout_var, 600)
+
+            model_name = self.model_name_var.get().strip()
+            topic = self.topic_text.get("0.0", "end").strip()
+            genre = self.genre_var.get().strip()
+            num_stories = self.safe_get_int(self.num_stories_var, 3)
+
+            self.safe_log("开始生成系列蓝图...")
+            Novel_series_generate(
+                interface_format=interface_format,
+                api_key=api_key,
+                base_url=base_url,
+                llm_model=model_name,
+                topic=topic,
+                genre=genre,
+                num_stories=num_stories,
+                filepath=filepath,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout_val
+            )
+            self.safe_log("✅ 系列蓝图生成完成。请在 'Series Blueprint' 标签页查看或编辑。")
+        except Exception:
+            self.handle_exception("生成系列蓝图时出错")
+        finally:
+            self.enable_button_safe(self.btn_generate_blueprint)
+    threading.Thread(target=task, daemon=True).start()
 
 def generate_novel_architecture_ui(self):
     filepath = self.filepath_var.get().strip()
@@ -40,8 +84,7 @@ def generate_novel_architecture_ui(self):
             max_tokens = self.max_tokens_var.get()
             timeout_val = self.safe_get_int(self.timeout_var, 600)
 
-            topic = self.topic_text.get("0.0", "end").strip()
-            genre = self.genre_var.get().strip()
+            story_index = self.safe_get_int(self.story_index_var, 1)
             num_chapters = self.safe_get_int(self.num_chapters_var, 10)
             word_number = self.safe_get_int(self.word_number_var, 3000)
             # 获取内容指导
@@ -53,8 +96,7 @@ def generate_novel_architecture_ui(self):
                 api_key=api_key,
                 base_url=base_url,
                 llm_model=model_name,
-                topic=topic,
-                genre=genre,
+                story_index=story_index,
                 number_of_chapters=num_chapters,
                 word_number=word_number,
                 filepath=filepath,
