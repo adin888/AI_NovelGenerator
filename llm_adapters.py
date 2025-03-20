@@ -3,8 +3,7 @@
 import logging
 from typing import Optional
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.inference.models import SystemMessage, UserMessage
@@ -112,7 +111,7 @@ class GeminiAdapter(BaseLLMAdapter):
             response = self._client.models.generate_content(
                 model = self.model_name,
                 contents = prompt,
-                config = types.GenerateContentConfig(
+                config = genai.types.GenerateContentConfig(
                     max_output_tokens=self.max_tokens,
                     temperature=self.temperature,
                 ),

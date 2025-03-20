@@ -29,7 +29,7 @@ def finalize_chapter(
     timeout: int = 600
 ):
     """
-    对指定章节做最终处理：更新全局摘要、更新角色状态、插入向量库等。
+    对指定章节做最终处理：更新前文摘要、更新角色状态、插入向量库等。
     默认无需再做扩写操作，若有需要可在外部调用 enrich_chapter_text 处理后再定稿。
     """
     chapters_dir = os.path.join(filepath, "chapters")

@@ -119,7 +119,7 @@ def generate_chapter_blueprint_ui(self):
         return
 
     def task():
-        if not messagebox.askyesno("确认", "确定要生成章节草稿吗？"):
+        if not messagebox.askyesno("确认", "确定要生成章节目录吗？"):
             self.enable_button_safe(self.btn_generate_chapter)
             return
         self.disable_button_safe(self.btn_generate_directory)
@@ -132,6 +132,7 @@ def generate_chapter_blueprint_ui(self):
             temperature = self.temperature_var.get()
             max_tokens = self.max_tokens_var.get()
             timeout_val = self.safe_get_int(self.timeout_var, 600)
+            user_guidance = self.user_guide_text.get("0.0", "end").strip()  # 新增获取用户指导
 
             self.safe_log("开始生成章节蓝图...")
             Chapter_blueprint_generate(
@@ -143,7 +144,8 @@ def generate_chapter_blueprint_ui(self):
                 filepath=filepath,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                timeout=timeout_val
+                timeout=timeout_val,
+                user_guidance=user_guidance  # 新增参数
             )
             self.safe_log("✅ 章节蓝图生成完成。请在 'Chapter Blueprint' 标签页查看或编辑。")
         except Exception:
@@ -413,7 +415,7 @@ def finalize_chapter_ui(self):
                 max_tokens=max_tokens,
                 timeout=timeout_val
             )
-            self.safe_log(f"✅ 第{chap_num}章定稿完成（已更新全局摘要、角色状态、向量库）。")
+            self.safe_log(f"✅ 第{chap_num}章定稿完成（已更新前文摘要、角色状态、向量库）。")
 
             final_text = read_file(chapter_file)
             self.master.after(0, lambda: self.show_chapter_in_textbox(final_text))
@@ -485,20 +487,53 @@ def import_knowledge_handler(self):
                 emb_format = self.embedding_interface_format_var.get().strip()
                 emb_model = self.embedding_model_name_var.get().strip()
 
-                self.safe_log(f"开始导入知识库文件: {selected_file}")
-                import_knowledge_file(
-                    embedding_api_key=emb_api_key,
-                    embedding_url=emb_url,
-                    embedding_interface_format=emb_format,
-                    embedding_model_name=emb_model,
-                    file_path=selected_file,
-                    filepath=self.filepath_var.get().strip()
-                )
-                self.safe_log("✅ 知识库文件导入完成。")
+                # 尝试不同编码读取文件
+                content = None
+                encodings = ['utf-8', 'gbk', 'gb2312', 'ansi']
+                for encoding in encodings:
+                    try:
+                        with open(selected_file, 'r', encoding=encoding) as f:
+                            content = f.read()
+                            break
+                    except UnicodeDecodeError:
+                        continue
+                    except Exception as e:
+                        self.safe_log(f"读取文件时发生错误: {str(e)}")
+                        raise
+
+                if content is None:
+                    raise Exception("无法以任何已知编码格式读取文件")
+
+                # 创建临时UTF-8文件
+                import tempfile
+                import os
+                with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, suffix='.txt') as temp:
+                    temp.write(content)
+                    temp_path = temp.name
+
+                try:
+                    self.safe_log(f"开始导入知识库文件: {selected_file}")
+                    import_knowledge_file(
+                        embedding_api_key=emb_api_key,
+                        embedding_url=emb_url,
+                        embedding_interface_format=emb_format,
+                        embedding_model_name=emb_model,
+                        file_path=temp_path,
+                        filepath=self.filepath_var.get().strip()
+                    )
+                    self.safe_log("✅ 知识库文件导入完成。")
+                finally:
+                    # 清理临时文件
+                    try:
+                        os.unlink(temp_path)
+                    except:
+                        pass
+
             except Exception:
                 self.handle_exception("导入知识库时出错")
             finally:
                 self.enable_button_safe(self.btn_import_knowledge)
+
         try:
             thread = threading.Thread(target=task, daemon=True)
             thread.start()

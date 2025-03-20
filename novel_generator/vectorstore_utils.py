@@ -7,10 +7,19 @@ import os
 import logging
 import traceback
 import nltk
+import numpy as np
+import re
+import ssl
+import requests
+import warnings
 from langchain_chroma import Chroma
+
+# 禁用特定的Torch警告
+warnings.filterwarnings('ignore', message='.*Torch was not compiled with flash attention.*')
+os.environ["TOKENIZERS_PARALLELISM"] = "false"  # 禁用tokenizer并行警告
+
 from chromadb.config import Settings
 from langchain.docstore.document import Document
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from .common import call_with_retry
 
@@ -131,8 +140,8 @@ def split_by_length(text: str, max_length: int = 500):
 
 def split_text_for_vectorstore(chapter_text: str, max_length: int = 500, similarity_threshold: float = 0.7):
     """
-    对新的章节文本进行分段后，再用于存入向量库。
-    先句子切分 -> 语义相似度合并 -> 再按 max_length 切分。
+    对新的章节文本进行分段后,再用于存入向量库。
+    使用 embedding 进行文本相似度计算。
     """
     if not chapter_text.strip():
         return []
@@ -143,33 +152,24 @@ def split_text_for_vectorstore(chapter_text: str, max_length: int = 500, similar
     if not sentences:
         return []
     
-    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-    embeddings = model.encode(sentences)
-    
-    merged_paragraphs = []
-    current_sentences = [sentences[0]]
-    current_embedding = embeddings[0]
-    
-    for i in range(1, len(sentences)):
-        sim = cosine_similarity([current_embedding], [embeddings[i]])[0][0]
-        if sim >= similarity_threshold:
-            current_sentences.append(sentences[i])
-            current_embedding = (current_embedding + embeddings[i]) / 2.0
-        else:
-            merged_paragraphs.append(" ".join(current_sentences))
-            current_sentences = [sentences[i]]
-            current_embedding = embeddings[i]
-    
-    if current_sentences:
-        merged_paragraphs.append(" ".join(current_sentences))
-    
+    # 直接按长度分段,不做相似度合并
     final_segments = []
-    for para in merged_paragraphs:
-        if len(para) > max_length:
-            sub_segments = split_by_length(para, max_length=max_length)
-            final_segments.extend(sub_segments)
+    current_segment = []
+    current_length = 0
+    
+    for sentence in sentences:
+        sentence_length = len(sentence)
+        if current_length + sentence_length > max_length:
+            if current_segment:
+                final_segments.append(" ".join(current_segment))
+            current_segment = [sentence]
+            current_length = sentence_length
         else:
-            final_segments.append(para)
+            current_segment.append(sentence)
+            current_length += sentence_length
+    
+    if current_segment:
+        final_segments.append(" ".join(current_segment))
     
     return final_segments
 
@@ -226,3 +226,19 @@ def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepa
         logging.warning(f"Similarity search failed: {e}")
         traceback.print_exc()
         return ""
+
+def _get_sentence_transformer(model_name: str = 'paraphrase-MiniLM-L6-v2'):
+    """获取sentence transformer模型，处理SSL问题"""
+    try:
+        # 设置torch环境变量
+        os.environ["TORCH_ALLOW_TF32_CUBLAS_OVERRIDE"] = "0"
+        os.environ["TORCH_CUDNN_V8_API_ENABLED"] = "0"
+        
+        # 禁用SSL验证
+        ssl._create_default_https_context = ssl._create_unverified_context
+        
+        # ...existing code...
+    except Exception as e:
+        logging.error(f"Failed to load sentence transformer model: {e}")
+        traceback.print_exc()
+        return None

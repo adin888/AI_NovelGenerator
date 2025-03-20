@@ -8,47 +8,41 @@ import logging
 import re
 import traceback
 import nltk
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+import warnings
 from utils import read_file
 from novel_generator.vectorstore_utils import load_vector_store, init_vector_store
 from langchain.docstore.document import Document
 
+# 禁用特定的Torch警告
+warnings.filterwarnings('ignore', message='.*Torch was not compiled with flash attention.*')
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 def advanced_split_content(content: str, similarity_threshold: float = 0.7, max_length: int = 500) -> list:
+    """使用基本分段策略"""
     nltk.download('punkt', quiet=True)
     nltk.download('punkt_tab', quiet=True)
     sentences = nltk.sent_tokenize(content)
     if not sentences:
         return []
-    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-    embeddings = model.encode(sentences)
-    merged_paragraphs = []
-    current_sentences = [sentences[0]]
-    current_embedding = embeddings[0]
-    for i in range(1, len(sentences)):
-        sim = cosine_similarity([current_embedding], [embeddings[i]])[0][0]
-        if sim >= similarity_threshold:
-            current_sentences.append(sentences[i])
-            current_embedding = (current_embedding + embeddings[i]) / 2.0
-        else:
-            merged_paragraphs.append(" ".join(current_sentences))
-            current_sentences = [sentences[i]]
-            current_embedding = embeddings[i]
-    if current_sentences:
-        merged_paragraphs.append(" ".join(current_sentences))
+
     final_segments = []
-    for para in merged_paragraphs:
-        if len(para) > max_length:
-            sub_segments = []
-            start_idx = 0
-            while start_idx < len(para):
-                end_idx = min(start_idx + max_length, len(para))
-                segment = para[start_idx:end_idx].strip()
-                sub_segments.append(segment)
-                start_idx = end_idx
-            final_segments.extend(sub_segments)
+    current_segment = []
+    current_length = 0
+    
+    for sentence in sentences:
+        sentence_length = len(sentence)
+        if current_length + sentence_length > max_length:
+            if current_segment:
+                final_segments.append(" ".join(current_segment))
+            current_segment = [sentence]
+            current_length = sentence_length
         else:
-            final_segments.append(para)
+            current_segment.append(sentence)
+            current_length += sentence_length
+    
+    if current_segment:
+        final_segments.append(" ".join(current_segment))
+    
     return final_segments
 
 def import_knowledge_file(
